@@ -66,6 +66,19 @@ input[type=range]{width:100%;accent-color:var(--gold)}label b{color:var(--g2);ma
   #ahoy-welcome{transition:none}
 }
 
+
+/* Roblox Original Sound control */
+.rb-match{display:grid;grid-template-columns:1.2fr .95fr;gap:14px;margin:16px 0}
+.rb-panel{min-width:0;border:1px solid var(--ln);border-radius:14px;background:linear-gradient(160deg,#202024,#17171a);padding:18px}
+.rb-check{display:flex;align-items:center;gap:12px;margin:0;color:var(--tx);font-size:.92rem;line-height:1.5}
+.rb-check input{width:20px;height:20px;flex:none;accent-color:var(--gold)}
+.rb-check strong{display:block;color:var(--tx);margin-bottom:4px}
+.rb-target label{color:var(--g2);font-size:1rem;font-weight:700}
+.rb-target input{margin-top:8px;padding:14px 15px;border:1px solid #80652d;border-radius:11px;background:#101012;color:var(--tx);font:700 1.15rem Inter,system-ui,sans-serif;width:100%}
+.rb-help{margin:9px 0 0;color:var(--mut);font-size:.88rem;line-height:1.45}
+#sp:disabled,#pt:disabled{opacity:.72;cursor:not-allowed}
+@media(max-width:650px){.rb-match{grid-template-columns:1fr}.rb-panel{padding:15px}}
+
 </style></head><body>
 
 <div id="ahoy-welcome" role="status" aria-label="Selamat datang">
@@ -93,7 +106,20 @@ input[type=range]{width:100%;accent-color:var(--gold)}label b{color:var(--g2);ma
 <div class="grid"><div><label for="fmt">Format keluaran</label><select id="fmt"><option value="wav24">WAV 24-bit (lossless)</option><option value="wav16">WAV 16-bit (lossless)</option><option value="mp3">MP3 320 kbps</option><option value="mp3b">MP3 192 kbps</option><option value="opus">OPUS (WebM)</option><option value="ogg">OGG (Opus)</option><option value="m4a">M4A (AAC)</option></select></div>
 <div><label for="sr">Sample rate</label><select id="sr"><option value="0">Sama dengan sumber</option><option value="44100">44.1 kHz</option><option value="48000">48 kHz</option></select></div>
 <div><label for="ch">Kanal</label><select id="ch"><option value="0">Sama dengan sumber</option><option value="2">Stereo</option><option value="1">Mono</option></select></div></div>
-<div class="grid"><div><label for="sp">Speed <b id="spv">1.00x</b></label><input type="range" id="sp" min="0.5" max="2" step="0.01" value="1"></div><div><label for="am">Amplify <b id="amv">0 dB</b></label><input type="range" id="am" min="-20" max="20" step="1" value="0"></div><div><label for="pt">Pitch <b id="ptv">0%</b></label><input type="range" id="pt" min="-50" max="50" step="1" value="0"></div></div>
+<div class="rb-match">
+<div class="rb-panel">
+<label class="rb-check">
+<input type="checkbox" id="rbAuto" checked>
+<span><strong>Roblox Original Sound</strong>Match source pitch and tempo after Roblox applies PlaybackSpeed; keep manual Pitch at 0%.</span>
+</label>
+</div>
+<div class="rb-panel rb-target">
+<label for="rbTarget">Target Roblox PlaybackSpeed</label>
+<input type="text" inputmode="decimal" id="rbTarget" value="0.47" autocomplete="off">
+<p class="rb-help" id="rbHelp">Audio akan dikonversi secara otomatis.</p>
+</div>
+</div>
+<div class="grid"><div><label for="sp">Speed <b id="spv">2.1277x</b></label><input type="range" id="sp" min="0.5" max="4" step="0.0001" value="2.1277"></div><div><label for="am">Amplify <b id="amv">0 dB</b></label><input type="range" id="am" min="-20" max="20" step="1" value="0"></div><div><label for="pt">Pitch <b id="ptv">0%</b></label><input type="range" id="pt" min="-50" max="50" step="1" value="0"></div></div>
 <div class="grid"><div><label for="ts">Trim mulai (detik)</label><input type="number" id="ts" min="0" step="0.1" value="0" class="num"></div><div><label for="te">Trim akhir (detik, 0 = sampai habis)</label><input type="number" id="te" min="0" step="0.1" value="0" class="num"></div></div>
 <label class="chk"><input type="checkbox" id="nm"> Normalisasi volume (puncak −1 dBFS, tanpa kompresi)</label>
 <button class="btn" id="go1" style="width:100%;margin-top:18px" disabled>Konversi</button><div class="bar" id="b1"><i></i></div><div id="r1"></div></div></section>
@@ -132,12 +158,24 @@ async function rec(ch,rate,mime){const ac=new AudioContext({sampleRate:rate}),b=
 function stretch(x,t,rate){const N=2048,H=1024,xp=new Float32Array(x.length+N+512);xp.set(x);const W=new Float32Array(N).map((_,i)=>.5-.5*Math.cos(2*Math.PI*i/N)),n=Math.ceil(x.length/t),y=new Float32Array(n+N);let prev=0;
 for(let o=0;o<n;o+=H){const c=Math.round(o*t);let s=c;if(o>0){let bs=-Infinity;const tg=prev+H;for(let d=-256;d<=256;d+=4){const q=c+d;if(q<0||q+N>xp.length)continue;let sc=0;for(let k=0;k<N;k+=8)sc+=xp[q+k]*xp[tg+k];if(sc>bs){bs=sc;s=q}}}
 for(let k=0;k<N;k++)y[o+k]+=xp[s+k]*W[k];prev=s}return y.slice(0,n)}
-async function conv(file){const ac=new (window.AudioContext||window.webkitAudioContext)();const src=await ac.decodeAudioData(await file.arrayBuffer());ac.close();
+async function conv(file){
+const ac=new (window.AudioContext||window.webkitAudioContext)();
+const src=await ac.decodeAudioData(await file.arrayBuffer());
+ac.close();
 const rate=+$('sr').value||src.sampleRate,nch=+$('ch').value||Math.min(2,src.numberOfChannels);
-const t0=Math.min(Math.max(0,+$('ts').value||0),src.duration-.01),t1=(+$('te').value>t0)?Math.min(+$('te').value,src.duration):src.duration,r=1+(+$('pt').value)/100;
+const t0=Math.min(Math.max(0,+$('ts').value||0),src.duration-.01),t1=(+$('te').value>t0)?Math.min(+$('te').value,src.duration):src.duration;
+const rbMode=$('rbAuto').checked;
+const target=parseFloat($('rbTarget').value.replace(',','.'));
+if(rbMode&&(!Number.isFinite(target)||target<=0||target>10))throw new Error('Target Roblox PlaybackSpeed harus lebih dari 0 dan maksimal 10.');
+// In Roblox mode, pre-compensate both pitch and duration by the inverse
+// PlaybackSpeed. Roblox then restores the original pitch and tempo.
+const inverse=rbMode?1/target:1;
+const r=rbMode?inverse:1+(+$('pt').value)/100;
 const oc=new OfflineAudioContext(nch,Math.max(1,Math.ceil((t1-t0)*rate/r)),rate),sn=oc.createBufferSource();sn.buffer=src;sn.playbackRate.value=r;sn.connect(oc.destination);sn.start(0,t0,t1-t0);
 const rb=await oc.startRendering();let ch=[...Array(nch).keys()].map(i=>rb.getChannelData(i));
-const tp=(+$('sp').value)/r;if(Math.abs(tp-1)>.005)ch=ch.map(a=>stretch(a,tp,rate));const gn=Math.pow(10,(+$('am').value)/20);if(gn!==1)ch=ch.map(a=>a.map(x=>x*gn));
+const selectedSpeed=rbMode?inverse:+$('sp').value;
+const tp=selectedSpeed/r;if(Math.abs(tp-1)>.005)ch=ch.map(a=>stretch(a,tp,rate));
+const gn=Math.pow(10,(+$('am').value)/20);if(gn!==1)ch=ch.map(a=>a.map(x=>x*gn));
 if($('nm').checked){let m=0;ch.forEach(a=>{for(let i=0;i<a.length;i++){const x=Math.abs(a[i]);if(x>m)m=x}});if(m>0){const g=.891/m;ch=ch.map(a=>a.map(x=>x*g))}}
 await new Promise(r=>setTimeout(r));const f=$('fmt').value,M=MR[f],blob=M?await rec(ch,rate,M[0]):f==='mp3'?mp3(ch,rate,320):f==='mp3b'?mp3(ch,rate,192):wav(ch,rate,f==='wav24'?24:16);
 return{blob,fmt:f,name:file.name.replace(/\.[^.]+$/,'').replace(/"/g,'')+'_ahoys.'+(M?M[1]:f.startsWith('mp3')?'mp3':'wav')}}
@@ -157,7 +195,33 @@ for(const f of F2){i++;$('n2').textContent='Memproses '+i+' dari '+F2.length+': 
 try{const x=await conv(f),u=URL.createObjectURL(x.blob);$('r2').insertAdjacentHTML('beforeend',link(x,u));log({t:Date.now(),name:f.name,fmt:x.fmt,size:x.blob.size,ok:true})}
 catch(e){$('r2').insertAdjacentHTML('beforeend','<div class="row"><span>'+f.name.replace(/</g,'&lt;')+'</span><span class="er">Gagal</span></div>');log({t:Date.now(),name:f.name,fmt:$('fmt').value,size:0,ok:false})}}
 bar('b2',100);$('n2').textContent='Selesai ('+F2.length+' file)';$('go2').disabled=false};
-[['sp','spv',v=>(+v).toFixed(2)+'x'],['am','amv',v=>v+' dB'],['pt','ptv',v=>v+'%']].forEach(([a,b,f])=>$(a).addEventListener('input',()=>$(b).textContent=f($(a).value)));
+function updateRobloxUI(){
+const enabled=$('rbAuto').checked;
+const target=parseFloat($('rbTarget').value.replace(',','.'));
+const valid=Number.isFinite(target)&&target>0&&target<=10;
+$('sp').disabled=enabled;
+$('pt').disabled=enabled;
+if(enabled&&valid){
+const inverse=1/target;
+$('sp').value=Math.min(4,Math.max(.5,inverse));
+$('spv').textContent=inverse.toFixed(4)+'x';
+$('ptv').textContent='0%';
+$('rbHelp').textContent='Audio akan dikonversi pada '+inverse.toFixed(4)+'x dan pitch dikompensasi otomatis.';
+}else if(enabled){
+$('spv').textContent='—';
+$('rbHelp').textContent='Masukkan PlaybackSpeed lebih dari 0 dan maksimal 10.';
+}else{
+$('spv').textContent=(+$('sp').value).toFixed(2)+'x';
+$('ptv').textContent=$('pt').value+'%';
+$('rbHelp').textContent='Mode otomatis nonaktif. Atur Speed dan Pitch secara manual.';
+}
+}
+$('rbAuto').addEventListener('change',updateRobloxUI);
+$('rbTarget').addEventListener('input',updateRobloxUI);
+$('sp').addEventListener('input',()=>{if(!$('rbAuto').checked)$('spv').textContent=(+$('sp').value).toFixed(2)+'x'});
+$('pt').addEventListener('input',()=>{if(!$('rbAuto').checked)$('ptv').textContent=$('pt').value+'%'});
+[['am','amv',v=>v+' dB']].forEach(([a,b,f])=>$(a).addEventListener('input',()=>$(b).textContent=f($(a).value)));
+updateRobloxUI();
 [['opus','audio/webm;codecs=opus'],['ogg','audio/ogg;codecs=opus'],['m4a','audio/mp4']].forEach(([v,m])=>{const o=document.querySelector('#fmt option[value="'+v+'"]');if(o&&!(window.MediaRecorder&&MediaRecorder.isTypeSupported(m))){o.disabled=true;o.textContent+=' (tidak didukung browser ini)'}});
 
 // Intro welcome screen: dismisses automatically; reduced-motion users see it briefly.
@@ -187,3 +251,4 @@ bar('b2',100);$('n2').textContent='Selesai ('+F2.length+' file)';$('go2').disabl
 
 render();
 </script></body></html>
+
